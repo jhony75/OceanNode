@@ -1,48 +1,75 @@
 const express = require('express');
-const app = express();
+const { MongoClient, ObjectId } = require('mongodb');
 
-app.use(express.json());
+const url = 'mongodb://jhony75:240799jhony75@localhost:27017/admin';
+const dbName = 'ocean_bancodados_10_03_2022';
 
-app.get('/', function (req, res) {
-  res.send('Hello World');
-});
+async function main() {
+  console.log('Iniciando conexão com o banco de dados');
+  const client = await MongoClient.connect(url);
+  const db = client.db(dbName);
+  const collection = db.collection('herois');
+  console.log('Conexão realizada com sucesso');
 
-const herois = ['Mulher Maravilha', 'Capitã Marvel', 'Homem de Ferro'];
+  const app = express();
 
-app.get('/herois', function (req, res) {
-  res.send(herois.filter(Boolean));
-});
+  app.use(express.json());
 
-app.get('/herois/:id', function (req, res) {
-  const id = req.params.id - 1;
-  const item = herois[id];
+  app.get('/', function (req, res) {
+    res.send('Hello World');
+  });
 
-  res.send(item);
-});
+  const herois = ['Mulher Maravilha', 'Capitã Marvel', 'Homem de Ferro'];
 
-app.post('/herois', function (req, res) {
-  const item = req.body;
+  // Get all
+  app.get('/herois', async function (req, res) {
+    const documentos = await collection.find().toArray();
 
-  herois.push(item);
+    res.send(documentos);
+  });
 
-  res.send('Item adicionado com sucesso!');
-});
+  // Get by Id
+  app.get('/herois/:id', async function (req, res) {
+    const id = req.params.id;
+    const item = await collection.findOne({ _id: new ObjectId(id) });
 
-app.put('/herois/:id', function (req, res) {
-  const id = req.params.id - 1;
-  const novoItem = req.body.nome;
+    res.send(item);
+  });
 
-  herois[id] = novoItem;
+  // Insert item
+  app.post('/herois', async function (req, res) {
+    const item = req.body;
 
-  res.send('Item atualizado com sucesso!');
-});
+    await collection.insertOne(item);
 
-app.delete('/herois/:id', function (req, res) {
-  const id = req.params.id - 1;
+    res.send(item);
+  });
 
-  delete herois[id];
+  // Alter item
+  app.put('/herois/:id', async function (req, res) {
+    const id = req.params.id;
+    const novoItem = req.body;
 
-  res.send('Item excluido com sucesso!');
-});
+    await collection.updateOne(
+      { _id: ObjectId(id) },
+      {
+        $set: novoItem,
+      }
+    );
 
-app.listen(3000);
+    res.send(novoItem);
+  });
+
+  // Delete item
+  app.delete('/herois/:id', async function (req, res) {
+    const id = req.params.id;
+
+    await collection.deleteOne({ _id: ObjectId(id) });
+
+    res.send('Item excluido com sucesso!');
+  });
+
+  app.listen(3000);
+}
+
+main();
